@@ -1,0 +1,67 @@
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: rentflow-client
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - rentflow-net
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    container_name: rentflow-admin
+    ports:
+      - '3001:80'
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - rentflow-net
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: rentflow-api
+    ports:
+      - '4000:4000'
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - rentflow-net
+
+  db:
+    image: mongo:7
+    container_name: rentflow-db
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - rentflow-net
+
+volumes:
+  mongo_data:
+
+networks:
+  rentflow-net:
+    driver: bridge
