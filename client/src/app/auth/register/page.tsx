@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Building2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { api } from "@/lib/api";
@@ -10,7 +10,6 @@ import { parseApiError } from "@/lib/utils";
 
 export default function RegisterPage() {
   const router = useRouter();
-  useSearchParams(); // keep for potential ?redirect param
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -42,8 +41,10 @@ export default function RegisterPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <Building2 className="w-8 h-8 text-primary-600" />
-            <span className="text-2xl font-bold text-primary-900">
+            <span className="w-9 h-9 rounded-2xl brand-logo-icon inline-flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-white" />
+            </span>
+            <span className="text-2xl font-bold brand-logo-text">
               RentFlow
             </span>
           </Link>

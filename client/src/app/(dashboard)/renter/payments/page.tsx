@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { api } from "@/lib/api";
@@ -19,10 +18,11 @@ interface Payment {
 }
 
 export default function PaymentHistoryPage() {
-  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get("success") !== "1") return;
 
     const sessionId = searchParams.get("session_id");
@@ -44,7 +44,7 @@ export default function PaymentHistoryPage() {
     };
 
     void verify();
-  }, [searchParams, queryClient]);
+  }, [queryClient]);
   const { data, isLoading } = useQuery<{ data: Payment[]; total: number }>({
     queryKey: ["payment-history"],
     queryFn: () =>

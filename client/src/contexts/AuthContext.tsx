@@ -11,7 +11,7 @@ import Cookies from "js-cookie";
 import { api } from "@/lib/api";
 
 interface User {
-  userId: string;
+  id: string;
   email: string;
   roles: string[];
 }
@@ -43,13 +43,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = (token: string, userData: User) => {
+  const login = (
+    token: string,
+    userData: User | { userId?: string; id?: string; email: string; roles: string[] },
+  ) => {
+    const normalizedId =
+      "id" in userData && userData.id
+        ? userData.id
+        : "userId" in userData && userData.userId
+          ? userData.userId
+          : "";
+    const normalizedUser: User = {
+      id: normalizedId,
+      email: userData.email,
+      roles: Array.isArray(userData.roles) ? userData.roles : [],
+    };
+    const isSecureContext =
+      process.env.NODE_ENV === "production" &&
+      typeof window !== "undefined" &&
+      window.location.protocol === "https:";
+
     Cookies.set("accessToken", token, {
       expires: 7,
-      secure: true,
+      secure: isSecureContext,
       sameSite: "Strict",
     });
-    setUser(userData);
+    setUser(normalizedUser);
   };
 
   const logout = () => {

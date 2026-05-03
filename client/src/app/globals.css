@@ -17,6 +17,7 @@
       linear-gradient(180deg, #f8fbff 0%, #f7f9fc 46%, #f4f7fb 100%);
     color: #111827;
     font-family: "Manrope", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
   }
 
   h1,
@@ -94,6 +95,35 @@
     animation: floatY 8s ease-in-out infinite;
     pointer-events: none;
   }
+
+  .brand-logo-icon {
+    background: linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 45%, #8b5cf6 100%);
+    box-shadow: 0 14px 30px -16px rgba(37, 99, 235, 0.9);
+  }
+
+  .brand-logo-text {
+    background: linear-gradient(110deg, #0f172a 0%, #1d4ed8 38%, #7c3aed 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .grid-overlay {
+    background-image: linear-gradient(
+        to right,
+        rgba(148, 163, 184, 0.15) 1px,
+        transparent 1px
+      ),
+      linear-gradient(to bottom, rgba(148, 163, 184, 0.15) 1px, transparent 1px);
+    background-size: 36px 36px;
+    mask-image: radial-gradient(circle at 50% 20%, black 40%, transparent 85%);
+    opacity: 0.5;
+  }
+
+  .bar-rise {
+    animation: barRise 1.1s ease-out both;
+    transform-origin: bottom;
+  }
 }
 
 @keyframes pageFade {
@@ -123,5 +153,16 @@
   }
   50% {
     transform: translateY(-16px);
+  }
+}
+
+@keyframes barRise {
+  from {
+    transform: scaleY(0.35);
+    opacity: 0.4;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
   }
 }

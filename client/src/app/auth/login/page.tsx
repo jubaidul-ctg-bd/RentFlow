@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Building2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { api } from "@/lib/api";
@@ -14,7 +14,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,7 +22,11 @@ export default function LoginPage() {
     try {
       const { data } = await api.post("/auth/login", { email, password });
       login(data.accessToken, data.user);
-      const redirect = searchParams.get("redirect") ?? "/dashboard";
+      const redirect =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("redirect") ??
+            "/dashboard"
+          : "/dashboard";
       router.push(redirect);
       toast.success("Welcome back!");
     } catch (err: unknown) {
@@ -38,8 +41,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <Building2 className="w-8 h-8 text-primary-600" />
-            <span className="text-2xl font-bold text-primary-900">
+            <span className="w-9 h-9 rounded-2xl brand-logo-icon inline-flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-white" />
+            </span>
+            <span className="text-2xl font-bold brand-logo-text">
               RentFlow
             </span>
           </Link>
