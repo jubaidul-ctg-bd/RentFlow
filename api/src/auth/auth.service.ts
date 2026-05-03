@@ -6,7 +6,6 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { UsersService } from '../users/users.service';
@@ -19,7 +18,6 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
     private readonly emailService: EmailService,
   ) {}
 
@@ -29,23 +27,18 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const verificationToken = crypto.randomBytes(32).toString('hex');
-    const isDev = this.configService.get('NODE_ENV') !== 'production';
 
     const user = await this.usersService.create({
       ...dto,
       passwordHash,
       verificationToken,
       roles: ['owner', 'renter'],
-      // Auto-verify in development so login works without email setup
-      isVerified: isDev,
+      isVerified: false,
     });
 
-    if (!isDev) {
-      await this.emailService.sendVerificationEmail(user.email, verificationToken);
-      return { message: 'Registration successful. Please verify your email.' };
-    }
+    await this.emailService.sendVerificationEmail(user.email, verificationToken);
 
-    return { message: 'Registration successful. You can log in now.' };
+    return { message: 'Registration successful. Please verify your email.' };
   }
 
   async login(dto: LoginDto) {
@@ -66,7 +59,11 @@ export class AuthService {
 
   async verifyEmail(token: string) {
     const user = await this.usersService.findByVerificationToken(token);
+
     if (!user) throw new BadRequestException('Invalid or expired token');
+
+    // Already verified (e.g. double-invoke) — return success without error
+    if (user.isVerified) return { message: 'Email verified successfully' };
 
     await this.usersService.markVerified(user._id.toString());
     return { message: 'Email verified successfully' };

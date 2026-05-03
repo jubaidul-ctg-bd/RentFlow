@@ -7,12 +7,14 @@ import { WalletModule } from '../wallet/wallet.module';
 import { EmailModule } from '../email/email.module';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { Payment, PaymentSchema } from '../payments/schemas/payment.schema';
+import { Flat, FlatSchema } from '../flats/schemas/flat.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Payment.name, schema: PaymentSchema },
+      { name: Flat.name, schema: FlatSchema },
     ]),
     FlatsModule,
     WalletModule,

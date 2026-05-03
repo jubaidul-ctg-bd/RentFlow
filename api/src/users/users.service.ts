@@ -20,6 +20,7 @@ export class UsersService {
   }
 
   async findByVerificationToken(token: string): Promise<UserDocument | null> {
+    // Match token whether or not isVerified — allows idempotent re-verification checks
     return this.userModel.findOne({ verificationToken: token }).exec();
   }
 
@@ -30,9 +31,9 @@ export class UsersService {
   }
 
   async markVerified(userId: string): Promise<void> {
+    // Keep the verificationToken in place so idempotent re-calls can still find the user
     await this.userModel.findByIdAndUpdate(userId, {
       isVerified: true,
-      $unset: { verificationToken: 1 },
     }).exec();
   }
 

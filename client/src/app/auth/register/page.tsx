@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Building2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { AxiosError } from "axios";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/utils";
 
@@ -26,11 +27,23 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post("/auth/register", form);
-      toast.success("Registration successful! You can now log in.");
-      router.push("/auth/login");
+      const { data } = await api.post<{ message?: string }>(
+        "/auth/register",
+        form,
+      );
+      toast.success(
+        data?.message ??
+          "Registration successful! Please verify your email before signing in.",
+      );
+      router.push(
+        `/auth/login?verify=1&email=${encodeURIComponent(form.email)}`,
+      );
     } catch (err: unknown) {
-      toast.error(parseApiError(err, "Registration failed"));
+      const fallbackMessage =
+        err instanceof AxiosError && err.response?.status === 409
+          ? "This email is already registered. Please sign in instead."
+          : "Registration failed";
+      toast.error(parseApiError(err, fallbackMessage));
     } finally {
       setLoading(false);
     }
@@ -44,15 +57,16 @@ export default function RegisterPage() {
             <span className="w-9 h-9 rounded-2xl brand-logo-icon inline-flex items-center justify-center">
               <Building2 className="w-5 h-5 text-white" />
             </span>
-            <span className="text-2xl font-bold brand-logo-text">
-              RentFlow
-            </span>
+            <span className="text-2xl font-bold brand-logo-text">RentFlow</span>
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 mt-4">
             Create your account
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             One account for both owners and renters
+          </p>
+          <p className="text-xs text-gray-500 mt-2">
+            After registration, we will send a verification email.
           </p>
         </div>
 

@@ -7,7 +7,6 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { customAlphabet } from 'nanoid';
-import { ConfigService } from '@nestjs/config';
 import { Flat, FlatDocument } from './schemas/flat.schema';
 import { CreateFlatDto } from './dto/create-flat.dto';
 import { UpdateFlatDto } from './dto/update-flat.dto';
@@ -18,19 +17,13 @@ const nanoid = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 8);
 export class FlatsService {
   constructor(
     @InjectModel(Flat.name) private readonly flatModel: Model<FlatDocument>,
-    private readonly configService: ConfigService,
   ) {}
 
   async create(ownerId: string, dto: CreateFlatDto): Promise<FlatDocument> {
-    const isDev = this.configService.get('NODE_ENV') !== 'production';
-    // In development, auto-approve flats and generate an invite code immediately
-    // (mirrors the auto-verify behaviour for new users)
-    const inviteCode = isDev ? `FLAT-${nanoid()}` : undefined;
     return this.flatModel.create({
       ...dto,
       ownerId: new Types.ObjectId(ownerId),
-      status: isDev ? 'approved' : 'pending',
-      ...(isDev && { inviteCode, approvedAt: new Date() }),
+      status: 'pending',
     });
   }
 
@@ -80,17 +73,10 @@ export class FlatsService {
     return updated;
   }
 
-  async deactivate(id: string, ownerId: string): Promise<FlatDocument> {
+  async deactivate(id: string, ownerId: string): Promise<void> {
     const flat = await this.findById(id);
     if (flat.ownerId.toString() !== ownerId) throw new ForbiddenException();
-
-    const updated = await this.flatModel.findByIdAndUpdate(
-      id,
-      { status: 'inactive', inviteCode: undefined },
-      { new: true },
-    ).exec();
-    if (!updated) throw new NotFoundException('Flat not found');
-    return updated;
+    await this.flatModel.findByIdAndDelete(id).exec();
   }
 
   // Admin operations

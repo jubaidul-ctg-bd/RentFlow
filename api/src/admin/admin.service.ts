@@ -6,6 +6,7 @@ import { UsersService } from '../users/users.service';
 import { WalletService } from '../wallet/wallet.service';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { Payment, PaymentDocument } from '../payments/schemas/payment.schema';
+import { Flat, FlatDocument } from '../flats/schemas/flat.schema';
 import { EmailService } from '../email/email.service';
 
 @Injectable()
@@ -13,6 +14,7 @@ export class AdminService {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     @InjectModel(Payment.name) private readonly paymentModel: Model<PaymentDocument>,
+    @InjectModel(Flat.name) private readonly flatModel: Model<FlatDocument>,
     private readonly flatsService: FlatsService,
     private readonly walletService: WalletService,
     private readonly emailService: EmailService,
@@ -86,7 +88,7 @@ export class AdminService {
         { $match: { status: 'paid', paidAt: { $gte: startOfDay } } },
         { $group: { _id: null, gross: { $sum: '$amount' }, count: { $sum: 1 } } },
       ]),
-      this.userModel.countDocuments({ 'roles': 'owner' }),
+      this.flatModel.countDocuments({ status: 'pending' }),
       this.paymentModel.countDocuments({ status: 'paid' }),
       this.walletService.getPendingWithdrawals(1, 5),
     ]);

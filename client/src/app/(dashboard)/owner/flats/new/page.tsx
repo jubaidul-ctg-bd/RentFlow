@@ -2,12 +2,23 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/utils";
 
+interface Flat {
+  _id: string;
+  name: string;
+  address: string;
+  monthlyRent: number;
+  status: string;
+  inviteCode?: string;
+}
+
 export default function NewFlatPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState({
     name: "",
     address: "",
@@ -24,10 +35,17 @@ export default function NewFlatPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post("/flats", {
+      const { data } = await api.post<Flat>("/flats", {
         ...form,
         monthlyRent: Number(form.monthlyRent),
       });
+
+      queryClient.setQueryData<Flat[]>(["owner-flats"], (previous = []) => [
+        data,
+        ...previous,
+      ]);
+      queryClient.invalidateQueries({ queryKey: ["owner-flats"] });
+
       toast.success("Flat submitted for approval!");
       router.push("/owner/flats");
     } catch (err: unknown) {
@@ -42,6 +60,9 @@ export default function NewFlatPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">
         Register New Flat
       </h1>
+      <p className="text-sm text-gray-600 mb-4">
+        Admin approval is required before this flat goes live.
+      </p>
       <div className="card">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -103,7 +124,7 @@ export default function NewFlatPage() {
               disabled={loading}
               className="btn-primary flex-1"
             >
-              {loading ? "Submitting…" : "Submit for Approval"}
+              {loading ? "Submitting…" : "Submit to Admin"}
             </button>
             <button
               type="button"

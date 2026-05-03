@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { Building2, Wallet, Users, Plus } from "lucide-react";
+import { Building2, Wallet, Users, Plus, Settings2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -112,6 +112,13 @@ export default function OwnerDashboard() {
           >
             <Wallet className="w-4 h-4" />
             View Wallet
+          </Link>
+          <Link
+            href="/owner/flats"
+            className="btn-secondary flex items-center gap-2"
+          >
+            <Settings2 className="w-4 h-4" />
+            Manage Flats
           </Link>
         </div>
       </div>
