@@ -1,20 +1,22 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Building2,
   CreditCard,
   Home,
   KeyRound,
   Plus,
+  Unlink,
   Users,
   Wallet,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import { api } from "@/lib/api";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, parseApiError } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Flat {
@@ -33,6 +35,8 @@ interface FlatLink {
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const [confirmUnlinkId, setConfirmUnlinkId] = useState<string | null>(null);
 
   // Redirect unauthenticated users
   useEffect(() => {
@@ -74,6 +78,19 @@ export default function DashboardPage() {
         })
         .catch(() => []),
     enabled: !!user,
+  });
+
+  const unlinkMutation = useMutation({
+    mutationFn: (flatId: string) => api.delete(`/renters/unlink/${flatId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["renter-flats"] });
+      setConfirmUnlinkId(null);
+      toast.success("Flat unlinked successfully");
+    },
+    onError: (err: unknown) => {
+      toast.error(parseApiError(err, "Failed to unlink flat"));
+      setConfirmUnlinkId(null);
+    },
   });
 
   if (loading || !user) {
@@ -227,20 +244,53 @@ export default function DashboardPage() {
                       / month
                     </span>
                   </p>
-                  <div className="flex gap-2 pt-1 border-t border-gray-100">
-                    <Link
-                      href={`/renter/dashboard?flatId=${link.flatId._id}`}
-                      className="btn-primary text-xs inline-flex items-center gap-1.5 flex-1 justify-center"
-                    >
-                      <CreditCard className="w-3.5 h-3.5" />
-                      Pay Rent
-                    </Link>
-                    <Link
-                      href="/renter/payments"
-                      className="btn-secondary text-xs flex-1 text-center"
-                    >
-                      History
-                    </Link>
+                  <div className="flex gap-2 pt-1 border-t border-gray-100 flex-col">
+                    <div className="flex gap-2">
+                      <Link
+                        href={`/renter/dashboard?flatId=${link.flatId._id}`}
+                        className="btn-primary text-xs inline-flex items-center gap-1.5 flex-1 justify-center"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        Pay Rent
+                      </Link>
+                      <Link
+                        href="/renter/payments"
+                        className="btn-secondary text-xs flex-1 text-center"
+                      >
+                        History
+                      </Link>
+                    </div>
+                    {/* Unlink */}
+                    {confirmUnlinkId === link._id ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500 flex-1">
+                          Remove this flat?
+                        </span>
+                        <button
+                          onClick={() => unlinkMutation.mutate(link.flatId._id)}
+                          disabled={unlinkMutation.isPending}
+                          className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded transition-colors disabled:opacity-50"
+                        >
+                          {unlinkMutation.isPending
+                            ? "Removing…"
+                            : "Yes, remove"}
+                        </button>
+                        <button
+                          onClick={() => setConfirmUnlinkId(null)}
+                          className="text-xs font-medium text-gray-500 hover:text-gray-700 px-2.5 py-1 rounded border border-gray-200 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmUnlinkId(link._id)}
+                        className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors self-end"
+                      >
+                        <Unlink className="w-3.5 h-3.5" />
+                        Unlink
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

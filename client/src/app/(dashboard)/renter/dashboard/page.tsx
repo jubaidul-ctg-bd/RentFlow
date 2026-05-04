@@ -11,6 +11,7 @@ import {
   Lock,
   MapPin,
   Plus,
+  Unlink,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { api } from "@/lib/api";
@@ -38,6 +39,7 @@ export default function RenterDashboard() {
   const [linkCode, setLinkCode] = useState("");
   const [selectedFlatId, setSelectedFlatId] = useState("");
   const [showLinkForm, setShowLinkForm] = useState(false);
+  const [confirmUnlinkId, setConfirmUnlinkId] = useState<string | null>(null);
 
   const { data: flatLinks = [], isLoading } = useQuery<FlatLink[]>({
     queryKey: ["renter-flats"],
@@ -95,6 +97,20 @@ export default function RenterDashboard() {
     },
     onError: (err: unknown) => {
       toast.error(parseApiError(err, "Payment failed"));
+    },
+  });
+
+  const unlinkMutation = useMutation({
+    mutationFn: (flatId: string) => api.delete(`/renters/unlink/${flatId}`),
+    onSuccess: (_, flatId) => {
+      queryClient.invalidateQueries({ queryKey: ["renter-flats"] });
+      if (selectedFlatId === flatId) setSelectedFlatId("");
+      setConfirmUnlinkId(null);
+      toast.success("Flat unlinked successfully");
+    },
+    onError: (err: unknown) => {
+      toast.error(parseApiError(err, "Failed to unlink flat"));
+      setConfirmUnlinkId(null);
     },
   });
 
@@ -208,41 +224,48 @@ export default function RenterDashboard() {
 
       {/* Linked flat cards */}
       {hasLinkedFlats && (
-        <div className="space-y-3 mb-6">
+        <div className="space-y-2.5 mb-5">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
             Linked Flats — {flatLinks.length}
           </h2>
           {flatLinks.map((link) => {
             const flat = link.flatId;
             const isActive = flat._id === activeFlat?._id;
+            const confirmingUnlink = confirmUnlinkId === link._id;
             return (
-              <button
+              <div
                 key={link._id}
-                onClick={() => setSelectedFlatId(flat._id)}
-                className={`w-full text-left rounded-xl border-2 px-5 py-4 transition-all focus:outline-none ${
+                className={`rounded-xl border-2 px-4 py-3 transition-all ${
                   isActive
                     ? "border-primary-500 bg-primary-50/50 shadow-sm"
-                    : "border-gray-200 bg-white hover:border-primary-200 hover:bg-gray-50"
+                    : "border-gray-200 bg-white"
                 }`}
               >
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4 min-w-0">
+                <div
+                  className="flex items-center justify-between gap-3 cursor-pointer"
+                  onClick={() => setSelectedFlatId(flat._id)}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
                     <div
-                      className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
                         isActive ? "bg-primary-100" : "bg-gray-100"
                       }`}
                     >
                       <Building2
-                        className={`w-5 h-5 ${isActive ? "text-primary-600" : "text-gray-400"}`}
+                        className={`w-4.5 h-4.5 ${
+                          isActive ? "text-primary-600" : "text-gray-400"
+                        }`}
                       />
                     </div>
                     <div className="min-w-0">
                       <p
-                        className={`font-semibold truncate ${isActive ? "text-primary-700" : "text-gray-800"}`}
+                        className={`font-semibold truncate ${
+                          isActive ? "text-primary-700" : "text-gray-800"
+                        }`}
                       >
                         {flat.name}
                       </p>
-                      <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5 truncate">
+                      <p className="text-xs text-gray-400 flex items-center gap-1 truncate">
                         <MapPin className="w-3 h-3 shrink-0" />
                         {flat.address}
                       </p>
@@ -250,14 +273,48 @@ export default function RenterDashboard() {
                   </div>
                   <div className="text-right shrink-0">
                     <p
-                      className={`font-bold text-base ${isActive ? "text-primary-600" : "text-gray-700"}`}
+                      className={`font-bold text-sm ${
+                        isActive ? "text-primary-600" : "text-gray-700"
+                      }`}
                     >
                       {formatCurrency(flat.monthlyRent)}
                     </p>
                     <p className="text-xs text-gray-400">/ month</p>
                   </div>
                 </div>
-              </button>
+
+                {/* Unlink row */}
+                <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-end gap-2">
+                  {confirmingUnlink ? (
+                    <>
+                      <span className="text-xs text-gray-500 mr-auto">
+                        Remove this flat?
+                      </span>
+                      <button
+                        onClick={() => unlinkMutation.mutate(flat._id)}
+                        disabled={unlinkMutation.isPending}
+                        className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded transition-colors disabled:opacity-50"
+                      >
+                        {unlinkMutation.isPending ? "Removing…" : "Yes, remove"}
+                      </button>
+                      <button
+                        onClick={() => setConfirmUnlinkId(null)}
+                        className="text-xs font-medium text-gray-500 hover:text-gray-700 px-2.5 py-1 rounded border border-gray-200 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmUnlinkId(link._id)}
+                      className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <Unlink className="w-3.5 h-3.5" />
+                      Unlink
+                    </button>
+                  )}
+                </div>
+              </div>
             );
           })}
         </div>

@@ -52,4 +52,13 @@ export class RentersController {
   ) {
     return this.rentersService.revokeAccess(flatId, renterId);
   }
+
+  @Delete('unlink/:flatId')
+  @Roles('renter')
+  unlinkFlat(
+    @CurrentUser() user: { userId: string },
+    @Param('flatId') flatId: string,
+  ) {
+    return this.rentersService.unlinkFlat(user.userId, flatId);
+  }
 }

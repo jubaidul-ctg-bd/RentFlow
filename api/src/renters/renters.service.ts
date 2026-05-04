@@ -87,4 +87,15 @@ export class RentersService {
     ).exec();
     if (!result) throw new NotFoundException('Renter link not found');
   }
+
+  async unlinkFlat(renterId: string, flatId: string): Promise<void> {
+    if (!Types.ObjectId.isValid(flatId)) {
+      throw new BadRequestException('Invalid flat id');
+    }
+    const result = await this.renterLinkModel.findOneAndUpdate(
+      { flatId: new Types.ObjectId(flatId), renterId: new Types.ObjectId(renterId), isActive: true },
+      { isActive: false },
+    ).exec();
+    if (!result) throw new NotFoundException('Active link not found for this flat');
+  }
 }
