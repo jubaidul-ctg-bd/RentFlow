@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   LineChart,
@@ -12,13 +13,31 @@ import {
 import { api } from "../lib/api";
 import { formatCurrency } from "../lib/utils";
 
+const RANGE_OPTIONS = [
+  { label: "3 months", value: 3 },
+  { label: "6 months", value: 6 },
+  { label: "12 months", value: 12 },
+];
+
 export default function ReportsPage() {
-  const { data: reports, isLoading } = useQuery({
+  const [months, setMonths] = useState(6);
+
+  const { data: reports, isLoading: reportsLoading } = useQuery({
     queryKey: ["admin-reports"],
     queryFn: () => api.get("/admin/reports").then((r) => r.data),
   });
 
-  if (isLoading)
+  const { data: chartData = [], isLoading: chartLoading } = useQuery<
+    { month: string; gross: number; fees: number; net: number }[]
+  >({
+    queryKey: ["admin-reports-chart", months],
+    queryFn: () =>
+      api
+        .get(`/admin/reports/chart?months=${months}`)
+        .then((r) => (Array.isArray(r.data) ? r.data : [])),
+  });
+
+  if (reportsLoading)
     return <div className="text-center py-12 text-gray-400">Loading…</div>;
 
   const summaryCards = [
@@ -31,20 +50,16 @@ export default function ReportsPage() {
       value: formatCurrency(reports?.revenue.allTime.net ?? 0),
     },
     {
-      label: "Platform Fees",
+      label: "Platform Fees Collected",
       value: formatCurrency(reports?.revenue.allTime.fees ?? 0),
     },
-    { label: "Monthly Payments", value: reports?.revenue.monthly.count ?? 0 },
+    {
+      label: "This Month Payments",
+      value: reports?.revenue.monthly.count ?? 0,
+    },
   ];
 
-  // Placeholder chart data — in production this would come from a dedicated /admin/reports/chart endpoint
-  const chartData = [
-    { month: "Jan", gross: 4200, fees: 105 },
-    { month: "Feb", gross: 5800, fees: 145 },
-    { month: "Mar", gross: 7200, fees: 180 },
-    { month: "Apr", gross: 6100, fees: 152 },
-    { month: "May", gross: 8400, fees: 210 },
-  ];
+  const allZero = chartData.every((d) => d.gross === 0 && d.fees === 0);
 
   return (
     <div>
@@ -62,34 +77,91 @@ export default function ReportsPage() {
       </div>
 
       <div className="card">
-        <h2 className="font-semibold text-gray-900 mb-4">
-          Revenue Trend (Monthly)
-        </h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}`} />
-            <Tooltip formatter={(value: number) => formatCurrency(value)} />
-            <Legend />
-            <Line
-              type="monotone"
-              dataKey="gross"
-              name="Gross Revenue"
-              stroke="#4f46e5"
-              strokeWidth={2}
-              dot={false}
-            />
-            <Line
-              type="monotone"
-              dataKey="fees"
-              name="Platform Fees"
-              stroke="#10b981"
-              strokeWidth={2}
-              dot={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-semibold text-gray-900">Revenue Trend</h2>
+          <div className="flex gap-1">
+            {RANGE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setMonths(opt.value)}
+                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                  months === opt.value
+                    ? "bg-indigo-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {chartLoading ? (
+          <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">
+            Loading chart…
+          </div>
+        ) : allZero ? (
+          <div className="h-[300px] flex flex-col items-center justify-center text-gray-400">
+            <p className="font-medium text-gray-500 mb-1">
+              No payment data yet
+            </p>
+            <p className="text-sm">
+              Revenue will appear here once payments are processed.
+            </p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart
+              data={chartData}
+              margin={{ top: 4, right: 16, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+              <YAxis
+                tick={{ fontSize: 12 }}
+                tickFormatter={(v: number) =>
+                  v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v}`
+                }
+                width={60}
+              />
+              <Tooltip
+                formatter={(value: number, name: string) => [
+                  formatCurrency(value),
+                  name,
+                ]}
+                contentStyle={{ fontSize: 12, borderRadius: 8 }}
+              />
+              <Legend iconType="circle" iconSize={8} />
+              <Line
+                type="monotone"
+                dataKey="gross"
+                name="Gross Revenue"
+                stroke="#4f46e5"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="net"
+                name="Net to Owners"
+                stroke="#10b981"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="fees"
+                name="Platform Fees"
+                stroke="#f59e0b"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

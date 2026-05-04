@@ -44,6 +44,28 @@ export class RentersService {
       .exec();
   }
 
+  async findActiveLinks(renterId: string): Promise<RenterLinkDocument[]> {
+    return this.renterLinkModel
+      .find({ renterId: new Types.ObjectId(renterId), isActive: true })
+      .populate('flatId')
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+  async findActiveLinkForFlat(
+    renterId: string,
+    flatId: string,
+  ): Promise<RenterLinkDocument | null> {
+    return this.renterLinkModel
+      .findOne({
+        renterId: new Types.ObjectId(renterId),
+        flatId: new Types.ObjectId(flatId),
+        isActive: true,
+      })
+      .populate('flatId')
+      .exec();
+  }
+
   async findAllByRenter(renterId: string): Promise<RenterLinkDocument[]> {
     return this.renterLinkModel
       .find({ renterId: new Types.ObjectId(renterId) })

@@ -106,6 +106,46 @@ export class AdminService {
     };
   }
 
+  async getRevenueChart(months = 12) {
+    const now = new Date();
+    // Build start date = first day of (months) ago
+    const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+
+    const rows: Array<{ _id: { year: number; month: number }; gross: number; fees: number; net: number }> =
+      await this.paymentModel.aggregate([
+        { $match: { status: 'paid', paidAt: { $gte: start } } },
+        {
+          $group: {
+            _id: { year: { $year: '$paidAt' }, month: { $month: '$paidAt' } },
+            gross: { $sum: '$amount' },
+            fees: { $sum: '$serviceFee' },
+            net: { $sum: '$netAmount' },
+          },
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1 } },
+      ]);
+
+    // Build a full month-by-month series (fill gaps with 0)
+    const map = new Map(
+      rows.map((r) => [`${r._id.year}-${String(r._id.month).padStart(2, '0')}`, r]),
+    );
+
+    const series: Array<{ month: string; gross: number; fees: number; net: number }> = [];
+    for (let i = months - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+      const row = map.get(key);
+      series.push({
+        month: label,
+        gross: row?.gross ?? 0,
+        fees: row?.fees ?? 0,
+        net: row?.net ?? 0,
+      });
+    }
+    return series;
+  }
+
   // Withdrawal management
   async listWithdrawals(page = 1, limit = 20) {
     return this.walletService.getPendingWithdrawals(page, limit);

@@ -7,6 +7,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { PaymentsService } from './payments.service';
 
 class InitiatePaymentDto {
+  @IsString() flatId: string;
   @IsString() month: string;
 }
 
@@ -21,7 +22,7 @@ export class PaymentsController {
     @CurrentUser() user: { userId: string },
     @Body() dto: InitiatePaymentDto,
   ) {
-    return this.paymentsService.initiatePayment(user.userId, dto.month);
+    return this.paymentsService.initiatePayment(user.userId, dto.flatId, dto.month);
   }
 
   @Get('verify-session')

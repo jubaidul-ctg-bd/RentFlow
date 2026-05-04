@@ -80,6 +80,11 @@ export class AdminController {
     return this.adminService.getReports();
   }
 
+  @Get('reports/chart')
+  getRevenueChart(@Query('months') months = '12') {
+    return this.adminService.getRevenueChart(Number(months));
+  }
+
   // Withdrawals
   @Get('withdrawals')
   listWithdrawals(

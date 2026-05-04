@@ -25,6 +25,7 @@ interface Flat {
 }
 
 interface FlatLink {
+  _id: string;
   isActive: boolean;
   flatId: Flat & { _id: string };
 }
@@ -62,18 +63,16 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  const { data: flatLink } = useQuery<FlatLink | null>({
-    queryKey: ["renter-flat"],
+  const { data: flatLinks = [] } = useQuery<FlatLink[]>({
+    queryKey: ["renter-flats"],
     queryFn: () =>
       api
-        .get("/renters/my-flat")
+        .get("/renters/my-flats")
         .then((r) => {
           const d = r.data;
-          return d && typeof d === "object" && "flatId" in d
-            ? (d as FlatLink)
-            : null;
+          return Array.isArray(d) ? (d as FlatLink[]) : [];
         })
-        .catch(() => null),
+        .catch(() => []),
     enabled: !!user,
   });
 
@@ -87,8 +86,7 @@ export default function DashboardPage() {
 
   const approvedFlats = flats.filter((f) => f.status === "approved");
   const pendingFlats = flats.filter((f) => f.status === "pending");
-  // Only truthy if the link has a real populated flatId
-  const linkedFlat = flatLink?.flatId?._id ? flatLink : null;
+  const linkedFlats = flatLinks.filter((l) => !!l.flatId?._id);
 
   return (
     <div>
@@ -180,59 +178,92 @@ export default function DashboardPage() {
 
       {/* ── Renter Section ── */}
       <section className="mb-10">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <Home className="w-5 h-5 text-primary-600" />
-          Renter
-        </h2>
-        {linkedFlat ? (
-          <div className="card">
-            <div className="flex items-center justify-between mb-1">
-              <span className="font-medium text-gray-900">
-                {linkedFlat.flatId?.name}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <Home className="w-5 h-5 text-primary-600" />
+            Renter
+            {linkedFlats.length > 0 && (
+              <span className="ml-1 text-xs font-medium bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">
+                {linkedFlats.length} linked
               </span>
-              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                Linked
-              </span>
+            )}
+          </h2>
+          <Link
+            href="/renter/dashboard"
+            className="btn-secondary inline-flex items-center gap-1.5 text-sm"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Link a Flat
+          </Link>
+        </div>
+
+        {linkedFlats.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              {linkedFlats.map((link) => (
+                <div
+                  key={link._id}
+                  className="card flex flex-col gap-3 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center shrink-0">
+                      <Building2 className="w-4 h-4 text-primary-500" />
+                    </div>
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium mt-1">
+                      Active
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 truncate">
+                      {link.flatId?.name}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate mt-0.5">
+                      {link.flatId?.address}
+                    </p>
+                  </div>
+                  <p className="text-lg font-bold text-primary-600">
+                    {formatCurrency(link.flatId?.monthlyRent ?? 0)}
+                    <span className="text-xs font-normal text-gray-400 ml-1">
+                      / month
+                    </span>
+                  </p>
+                  <div className="flex gap-2 pt-1 border-t border-gray-100">
+                    <Link
+                      href={`/renter/dashboard?flatId=${link.flatId._id}`}
+                      className="btn-primary text-xs inline-flex items-center gap-1.5 flex-1 justify-center"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      Pay Rent
+                    </Link>
+                    <Link
+                      href="/renter/payments"
+                      className="btn-secondary text-xs flex-1 text-center"
+                    >
+                      History
+                    </Link>
+                  </div>
+                </div>
+              ))}
             </div>
-            <p className="text-sm text-gray-500 mb-3">
-              {linkedFlat.flatId?.address}
-            </p>
-            <p className="text-xl font-bold text-gray-900 mb-4">
-              {formatCurrency(linkedFlat.flatId?.monthlyRent ?? 0)}
-              <span className="text-sm font-normal text-gray-500">
-                {" "}
-                / month
-              </span>
-            </p>
-            <div className="flex gap-3">
-              <Link
-                href="/renter/dashboard"
-                className="btn-primary text-sm inline-flex items-center gap-2"
-              >
-                <CreditCard className="w-4 h-4" />
-                Pay Rent
-              </Link>
-              <Link href="/renter/payments" className="btn-secondary text-sm">
-                Payment History
-              </Link>
-            </div>
-          </div>
+          </>
         ) : (
           <div className="card flex items-center gap-5 py-6">
             <div className="w-12 h-12 rounded-full bg-primary-50 flex items-center justify-center shrink-0">
               <KeyRound className="w-6 h-6 text-primary-500" />
             </div>
             <div className="flex-1">
-              <p className="font-medium text-gray-900">Link your flat</p>
+              <p className="font-medium text-gray-900">No flats linked yet</p>
               <p className="text-sm text-gray-500">
-                Enter the invite code from your landlord to pay rent online.
+                Enter an invite code from your landlord to link a flat and pay
+                rent online.
               </p>
             </div>
             <Link
               href="/renter/dashboard"
-              className="btn-primary text-sm shrink-0"
+              className="btn-primary text-sm shrink-0 inline-flex items-center gap-2"
             >
-              Enter Code
+              <KeyRound className="w-4 h-4" />
+              Link Flat
             </Link>
           </div>
         )}

@@ -27,21 +27,25 @@ export class PaymentsService {
     this.stripe = new Stripe(configService.getOrThrow<string>('STRIPE_SECRET_KEY'));
   }
 
-  async initiatePayment(renterId: string, month: string) {
+  async initiatePayment(renterId: string, flatId: string, month: string) {
+    if (!Types.ObjectId.isValid(flatId)) {
+      throw new BadRequestException('Invalid flat id');
+    }
+
     // Validate month format
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
       throw new BadRequestException('Invalid month format. Use YYYY-MM');
     }
 
-    const link = await this.rentersService.findActiveLink(renterId);
-    if (!link) throw new BadRequestException('You are not linked to any flat');
+    const link = await this.rentersService.findActiveLinkForFlat(renterId, flatId);
+    if (!link) throw new BadRequestException('You are not linked to this flat');
 
     const flat = link.flatId as any;
-    const flatId = flat._id.toString();
+    const resolvedFlatId = flat._id.toString();
 
     // Check for any existing payment record for this renter/month/flat
     const existing = await this.paymentModel.findOne({
-      flatId: new Types.ObjectId(flatId),
+      flatId: new Types.ObjectId(resolvedFlatId),
       renterId: new Types.ObjectId(renterId),
       month,
     }).exec();
@@ -78,14 +82,14 @@ export class PaymentsService {
           },
         },
       ],
-      metadata: { renterId, flatId, month, ownerId: flat.ownerId.toString() },
+      metadata: { renterId, flatId: resolvedFlatId, month, ownerId: flat.ownerId.toString() },
       success_url: `${platformUrl}/renter/payments?success=1&month=${month}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${platformUrl}/renter/dashboard?canceled=1`,
     });
 
     // Pre-create the payment record so we can track it via session id
     await this.paymentModel.create({
-      flatId: new Types.ObjectId(flatId),
+      flatId: new Types.ObjectId(resolvedFlatId),
       renterId: new Types.ObjectId(renterId),
       ownerId: flat.ownerId,
       amount,

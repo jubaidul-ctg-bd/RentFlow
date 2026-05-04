@@ -32,6 +32,12 @@ export class RentersController {
     return this.rentersService.findActiveLink(user.userId);
   }
 
+  @Get('my-flats')
+  @Roles('renter')
+  getMyFlats(@CurrentUser() user: { userId: string }) {
+    return this.rentersService.findActiveLinks(user.userId);
+  }
+
   @Get('flats/:flatId/renters')
   @Roles('owner')
   getFlatRenters(@Param('flatId') flatId: string) {

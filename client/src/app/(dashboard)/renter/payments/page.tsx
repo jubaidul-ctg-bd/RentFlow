@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { api } from "@/lib/api";
@@ -19,11 +19,14 @@ interface Payment {
 
 export default function PaymentHistoryPage() {
   const queryClient = useQueryClient();
+  const toastShown = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get("success") !== "1") return;
+    if (toastShown.current) return;
+    toastShown.current = true;
 
     const sessionId = searchParams.get("session_id");
     const month = searchParams.get("month");
